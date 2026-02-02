@@ -26,10 +26,42 @@ const formDate = ref("2026-02-02");
 const formTitle = ref("");
 const formText = ref("");
 
+function uid(): string {
+  // Kombi aus Zufall + Zeit -> für MVP reicht das
+  return Math.random().toString(16).slice(2) + Date.now().toString(16);
+}
+
+
 // Mini-Funktion: neues Event hinzufügen
 function addEvent() {
-  // TODO: kommt gleich im nächsten Schritt
+  // 1) Eingaben aufräumen (trim entfernt Leerzeichen am Anfang/Ende)
+  const title = formTitle.value.trim();
+  const text = formText.value.trim();
+  const date = formDate.value;
+
+  // 2) Mini-Validation: Titel muss da sein
+  if (!title) {
+    alert("Bitte gib einen Titel ein.");
+    return;
+  }
+
+  // 3) Neues Event bauen
+  const newEvent: LifeEvent = {
+    id: uid(),
+    track: formTrack.value,
+    date: date,
+    title: title,
+    text: text,
+  };
+
+  // 4) In die Liste einfügen (wir packen es nach oben)
+  events.value.unshift(newEvent);
+
+  // 5) Formular leeren (Track & Datum lassen wir erstmal so)
+  formTitle.value = "";
+  formText.value = "";
 }
+
 </script>
 
 <template>
@@ -55,6 +87,7 @@ function addEvent() {
     <section class="border rounded p-3">
       <h2 class="font-semibold mb-2">Neues Event</h2>
 
+      <!-- Wenn das Formular abgeschickt wird, rufe die Funktion addEvent() auf. -->
       <form class="space-y-2" @submit.prevent="addEvent">
         <div>
           <label class="text-sm text-gray-600">Track</label>
