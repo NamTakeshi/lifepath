@@ -1,5 +1,5 @@
 <script setup>
-import {ref, onMounted, watch} from "vue";
+import {ref, onMounted, watch, computed} from "vue";
 
 const STORAGE_KEY = "lifepath.events.v1";
 
@@ -12,14 +12,12 @@ const TRACKS = [
 
 
 // Hier speichern wir unsere Events (erstmal nur im Speicher)
-const events = ref([  {
-    id: "1",
-    track: "career",
-    date: "2026-02-02",
-    title: "LifePath gestartet",
-    text: "Erstes Mini-MVP in Vue.",
-  },
+const events = ref([
+  { id: "1", track: "career", date: "2024-03-01", title: "Job gestartet", text: "..." },
+  { id: "2", track: "career", date: "2025-01-15", title: "Projekt X", text: "..." },
+  { id: "3", track: "travel", date: "2025-08-10", title: "Reise nach Rom", text: "..." },
 ]);
+
 
 onMounted(() => {
   const saved = loadEvents();
@@ -35,14 +33,57 @@ const formTrack = ref("career");
 const formDate = ref("2026-02-02");
 const formTitle = ref("");
 const formText = ref("");
-
 // Merkt sich die ID des aktuell ausgewählten Events (für Edit)
 const selectedId = ref(null);
+
+
+// Events pro Track gruppiert & nach Datum sortiert
+const eventsByTrack = computed(() => {
+  const grouped = {
+    career: [],
+    family: [],
+    travel: [],
+  };
+
+  for (const e of events.value) {
+    grouped[e.track].push(e);
+  }
+
+  // Sortierung: neueste zuerst
+  for (const key of Object.keys(grouped)) {
+    grouped[key].sort((a, b) => b.date.localeCompare(a.date));
+  }
+
+  return grouped;
+});
+
+// Gesamter Zeitbereich (min/max Datum) für die Positionierung
+const timelineRange = computed(() => {
+  if (events.value.length === 0) return null;
+
+  const dates = events.value.map(e => e.date).sort();
+  return {
+    min: dates[0],
+    max: dates[dates.length - 1],
+  };
+});
+
 
 function uid() {
   // Kombi aus Zufall + Zeit -> für MVP reicht das
   return Math.random().toString(16).slice(2) + Date.now().toString(16);
 }
+
+// Wandelt ein Datum in eine Prozent-Position (0..100) um
+function dateToPercent(date, minDate, maxDate) {
+  const d = new Date(date).getTime();
+  const min = new Date(minDate).getTime();
+  const max = new Date(maxDate).getTime();
+
+  if (max === min) return 50; // wenn nur ein Datum existiert
+  return ((d - min) / (max - min)) * 100;
+}
+
 
 // Events im localStorage speichern
 function saveEvents(list) {
@@ -166,27 +207,62 @@ function resetForm() {
     <section class="border rounded p-3 mb-4">
       <h2 class="font-semibold mb-2">Events</h2>
 
-      <ul class="space-y-2">
-        <li
-            v-for="e in events"
-            :key="e.id"
-            class="border rounded p-2 cursor-pointer"
-            :class="e.id === selectedId ? 'bg-gray-100' : ''"
-            @click="selectEvent(e.id)"
-        >
-          <div class="text-sm text-gray-600">
-            {{ e.date }} • {{ e.track }}
+      <div class="space-y-8">
+        <div v-for="t in TRACKS" :key="t.id">
+          <h3 class="font-semibold mb-2">{{ t.label }}</h3>
+
+          <div class="text-xs text-red-500">
+            Debug: {{ eventsByTrack[t.id].length }} events in {{ t.id }}
           </div>
-          <div class="font-medium">{{ e.title }}</div>
-          <div class="text-sm text-gray-700">{{ e.text }}</div>
-          <button
-              class="mt-2 px-2 py-1 border rounded text-sm"
-              @click.stop="deleteEvent(e.id)"
-          >
-            Löschen
-          </button>
-        </li>
-      </ul>
+          <!-- Horizontale Timeline -->
+          <div class="relative h-24 bg-gray-50 rounded border">
+            <div class="absolute left-2 right-2 top-6 h-1 bg-gray-300 rounded"></div>
+            <div
+                v-for="e in eventsByTrack[t.id]"
+                :key="e.id"
+                class="absolute top-2 -translate-x-1/2 cursor-pointer"
+                :style="{
+    left: timelineRange
+      ? dateToPercent(e.date, timelineRange.min, timelineRange.max) + '%'
+      : '50%'
+  }"
+                @click="selectEvent(e.id)"
+            >
+              <!-- Punkt -->
+              <div
+                  class="h-3 w-3 rounded-full border relative"
+                  :class="e.id === selectedId ? 'border-black bg-black' : 'border-gray-400 bg-white'"
+              ></div>
+
+              <!-- Datum -->
+              <div class="text-xs text-gray-600 mt-2 whitespace-nowrap">
+                {{ e.date }}
+              </div>
+
+              <!-- Titel -->
+              <div class="text-xs text-center mt-1 max-w-[120px]">
+                {{ e.title }}
+              </div>
+              <!-- Löschen -->
+              <button
+                  class="mt-2 px-2 py-1 border rounded text-xs"
+                  @click.stop="deleteEvent(e.id)"
+              >
+                Löschen
+              </button>
+            </div>
+
+            <p
+                v-if="eventsByTrack[t.id].length === 0"
+                class="text-sm text-gray-500"
+            >
+              Noch keine Events.
+            </p>
+          </div>
+        </div>
+      </div>
+
+
     </section>
 
     <!-- Formular -->
