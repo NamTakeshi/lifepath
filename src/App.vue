@@ -132,6 +132,21 @@ function selectEvent(id) {
   formText.value = event.text;
 }
 
+// Löscht ein Event anhand der ID
+function deleteEvent(id) {
+  const ok = confirm("Wirklich löschen?");
+  if (!ok) return;
+
+  // entfernt das Event aus dem Array
+  events.value = events.value.filter(e => e.id !== id);
+
+  // falls gerade das gelöschte Event ausgewählt war: Edit-Modus verlassen
+  if (selectedId.value === id) {
+    resetForm();
+  }
+}
+
+
 // Formular leeren & Edit-Modus verlassen
 function resetForm() {
   selectedId.value = null;
@@ -164,6 +179,12 @@ function resetForm() {
           </div>
           <div class="font-medium">{{ e.title }}</div>
           <div class="text-sm text-gray-700">{{ e.text }}</div>
+          <button
+              class="mt-2 px-2 py-1 border rounded text-sm"
+              @click.stop="deleteEvent(e.id)"
+          >
+            Löschen
+          </button>
         </li>
       </ul>
     </section>
