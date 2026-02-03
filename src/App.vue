@@ -1,19 +1,18 @@
-<script setup lang="ts">
+<script setup>
 import {ref, onMounted, watch} from "vue";
-import type { LifeEvent, Track } from "./types";
 
 const STORAGE_KEY = "lifepath.events.v1";
 
 // 3 feste Tracks (für Phase 1)
-const TRACKS: { id: Track; label: string }[] = [
+const TRACKS = [
   { id: "career", label: "Karriere" },
   { id: "family", label: "Familie" },
   { id: "travel", label: "Reisen" },
 ];
 
+
 // Hier speichern wir unsere Events (erstmal nur im Speicher)
-const events = ref<LifeEvent[]>([
-  {
+const events = ref([  {
     id: "1",
     track: "career",
     date: "2026-02-02",
@@ -23,27 +22,35 @@ const events = ref<LifeEvent[]>([
 ]);
 
 onMounted(() => {
-  events.value = loadEvents();
+  const saved = loadEvents();
+
+  // Wenn localStorage leer ist, behalten wir das Demo-Event
+  if (saved.length > 0) {
+    events.value = saved;
+  }
 });
 
 // Form-Felder für ein neues Event
-const formTrack = ref<Track>("career");
+const formTrack = ref("career");
 const formDate = ref("2026-02-02");
 const formTitle = ref("");
 const formText = ref("");
 
-function uid(): string {
+// Merkt sich die ID des aktuell ausgewählten Events (für Edit)
+const selectedId = ref(null);
+
+function uid() {
   // Kombi aus Zufall + Zeit -> für MVP reicht das
   return Math.random().toString(16).slice(2) + Date.now().toString(16);
 }
 
 // Events im localStorage speichern
-function saveEvents(list: LifeEvent[]) {
+function saveEvents(list) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
 }
 
 // Events aus localStorage laden
-function loadEvents(): LifeEvent[] {
+function loadEvents() {
   const raw = localStorage.getItem(STORAGE_KEY);
 
   if (!raw) {
@@ -52,7 +59,7 @@ function loadEvents(): LifeEvent[] {
   }
 
   try {
-    return JSON.parse(raw) as LifeEvent[];
+    return JSON.parse(raw);
   } catch {
     // Falls etwas kaputt ist
     return [];
@@ -61,7 +68,6 @@ function loadEvents(): LifeEvent[] {
 
 // Mini-Funktion: neues Event hinzufügen
 function addEvent() {
-  // Eingaben aufräumen (trim entfernt Leerzeichen am Anfang/Ende)
   const title = formTitle.value.trim();
   const text = formText.value.trim();
   const date = formDate.value;
@@ -71,18 +77,33 @@ function addEvent() {
     return;
   }
 
-  const newEvent: LifeEvent = {
+  // 🔁 FALL 1: Event bearbeiten
+  if (selectedId.value) {
+    const index = events.value.findIndex(e => e.id === selectedId.value);
+    if (index === -1) return;
+
+    events.value[index] = {
+      ...events.value[index],
+      track: formTrack.value,
+      date,
+      title,
+      text,
+    };
+
+    resetForm();
+    return;
+  }
+
+  // ➕ FALL 2: Neues Event anlegen
+  const newEvent = {
     id: uid(),
     track: formTrack.value,
-    date: date,
-    title: title,
-    text: text,
+    date,
+    title,
+    text,
   };
 
-  // In die Liste einfügen (wir packen es nach oben)
   events.value.unshift(newEvent);
-
-  // Formular leeren (Track & Datum lassen wir erstmal so)
   formTitle.value = "";
   formText.value = "";
 }
@@ -96,6 +117,29 @@ watch(
     { deep: true }
 );
 
+// Wird aufgerufen, wenn man ein Event in der Liste anklickt
+function selectEvent(id) {
+  const event = events.value.find(e => e.id === id);
+  if (!event) return;
+
+  // ID merken (wir sind jetzt im Edit-Modus)
+  selectedId.value = id;
+
+  // Formular mit Event-Daten füllen
+  formTrack.value = event.track;
+  formDate.value = event.date;
+  formTitle.value = event.title;
+  formText.value = event.text;
+}
+
+// Formular leeren & Edit-Modus verlassen
+function resetForm() {
+  selectedId.value = null;
+  formTrack.value = "career";
+  formDate.value = new Date().toISOString().slice(0, 10);
+  formTitle.value = "";
+  formText.value = "";
+}
 
 </script>
 
@@ -108,7 +152,13 @@ watch(
       <h2 class="font-semibold mb-2">Events</h2>
 
       <ul class="space-y-2">
-        <li v-for="e in events" :key="e.id" class="border rounded p-2">
+        <li
+            v-for="e in events"
+            :key="e.id"
+            class="border rounded p-2 cursor-pointer"
+            :class="e.id === selectedId ? 'bg-gray-100' : ''"
+            @click="selectEvent(e.id)"
+        >
           <div class="text-sm text-gray-600">
             {{ e.date }} • {{ e.track }}
           </div>
@@ -120,7 +170,9 @@ watch(
 
     <!-- Formular -->
     <section class="border rounded p-3">
-      <h2 class="font-semibold mb-2">Neues Event</h2>
+      <h2 class="font-semibold mb-2">
+        {{ selectedId ? "Event bearbeiten" : "Neues Event" }}
+      </h2>
 
       <!-- Wenn das Formular abgeschickt wird, rufe die Funktion addEvent() auf. -->
       <form class="space-y-2" @submit.prevent="addEvent">
@@ -149,7 +201,11 @@ watch(
         </div>
 
         <button class="px-3 py-2 border rounded bg-black text-white" type="submit">
-          Hinzufügen
+          {{ selectedId ? "Speichern" : "Hinzufügen" }}
+        </button>
+
+        <button class="px-3 py-2 border rounded" type="button" @click="resetForm">
+          Abbrechen
         </button>
       </form>
     </section>
