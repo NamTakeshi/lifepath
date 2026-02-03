@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import {ref, onMounted, watch} from "vue";
 import type { LifeEvent, Track } from "./types";
+
+const STORAGE_KEY = "lifepath.events.v1";
 
 // 3 feste Tracks (für Phase 1)
 const TRACKS: { id: Track; label: string }[] = [
@@ -20,6 +22,10 @@ const events = ref<LifeEvent[]>([
   },
 ]);
 
+onMounted(() => {
+  events.value = loadEvents();
+});
+
 // Form-Felder für ein neues Event
 const formTrack = ref<Track>("career");
 const formDate = ref("2026-02-02");
@@ -31,21 +37,40 @@ function uid(): string {
   return Math.random().toString(16).slice(2) + Date.now().toString(16);
 }
 
+// Events im localStorage speichern
+function saveEvents(list: LifeEvent[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+}
+
+// Events aus localStorage laden
+function loadEvents(): LifeEvent[] {
+  const raw = localStorage.getItem(STORAGE_KEY);
+
+  if (!raw) {
+    // Noch nichts gespeichert
+    return [];
+  }
+
+  try {
+    return JSON.parse(raw) as LifeEvent[];
+  } catch {
+    // Falls etwas kaputt ist
+    return [];
+  }
+}
 
 // Mini-Funktion: neues Event hinzufügen
 function addEvent() {
-  // 1) Eingaben aufräumen (trim entfernt Leerzeichen am Anfang/Ende)
+  // Eingaben aufräumen (trim entfernt Leerzeichen am Anfang/Ende)
   const title = formTitle.value.trim();
   const text = formText.value.trim();
   const date = formDate.value;
 
-  // 2) Mini-Validation: Titel muss da sein
   if (!title) {
     alert("Bitte gib einen Titel ein.");
     return;
   }
 
-  // 3) Neues Event bauen
   const newEvent: LifeEvent = {
     id: uid(),
     track: formTrack.value,
@@ -54,13 +79,23 @@ function addEvent() {
     text: text,
   };
 
-  // 4) In die Liste einfügen (wir packen es nach oben)
+  // In die Liste einfügen (wir packen es nach oben)
   events.value.unshift(newEvent);
 
-  // 5) Formular leeren (Track & Datum lassen wir erstmal so)
+  // Formular leeren (Track & Datum lassen wir erstmal so)
   formTitle.value = "";
   formText.value = "";
 }
+
+// Immer speichern, wenn sich die Events ändern
+watch(
+    events,
+    (newEvents) => {
+      saveEvents(newEvents);
+    },
+    { deep: true }
+);
+
 
 </script>
 
