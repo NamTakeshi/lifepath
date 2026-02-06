@@ -35,6 +35,8 @@ const formTitle = ref("");
 const formText = ref("");
 // Merkt sich die ID des aktuell ausgewählten Events (für Edit)
 const selectedId = ref(null);
+const activeTrack = ref(null);
+
 
 
 // Events pro Track gruppiert & nach Datum sortiert
@@ -197,6 +199,17 @@ function resetForm() {
   formText.value = "";
 }
 
+function openTrack(trackId) {
+  activeTrack.value = trackId;
+  resetForm(); // optional: Formular zurücksetzen beim Wechsel
+}
+
+function closeTrack() {
+  activeTrack.value = null;
+  resetForm();
+}
+
+
 </script>
 
 <template>
@@ -205,66 +218,65 @@ function resetForm() {
 
     <!-- Liste -->
     <section class="border rounded p-3 mb-4">
-      <h2 class="font-semibold mb-2">Events</h2>
+      <h2 class="font-semibold mb-2">Zeitstrahlen</h2>
 
-      <div class="space-y-8">
-        <div v-for="t in TRACKS" :key="t.id">
-          <h3 class="font-semibold mb-2">{{ t.label }}</h3>
-
-          <div class="text-xs text-red-500">
-            Debug: {{ eventsByTrack[t.id].length }} events in {{ t.id }}
+      <!--Track Auswahl-->
+      <div v-if="!activeTrack" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <button
+            v-for="t in TRACKS"
+            :key="t.id"
+            class="border rounded p-4 text-left hover:bg-neutral-50"
+            @click="openTrack(t.id)"
+        >
+          <div class="font-semibold">{{ t.label }}</div>
+          <div class="text-sm text-gray-600">
+            {{ eventsByTrack[t.id].length }} Events
           </div>
-          <!-- Horizontale Timeline -->
-          <div class="relative h-24 bg-white rounded border border-red-500">
-            <div class="absolute left-2 right-2 top-6 h-2 bg-red-500 rounded"></div>
+        </button>
+      </div>
+      <div v-else>
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-semibold">
+            {{ TRACKS.find(x => x.id === activeTrack)?.label }}
+          </h3>
 
+          <button class="border rounded px-3 py-2" @click="closeTrack">
+            ← Zurück
+          </button>
+        </div>
+
+        <!--Timeline Anzeige-->
+        <div class="relative w-full h-24 bg-neutral-900 rounded border border-neutral-700">
+          <div class="absolute left-4 right-4 top-1/2 h-0.5 bg-neutral-500"></div>
+
+          <div
+              v-for="e in eventsByTrack[activeTrack]"
+              :key="e.id"
+              class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 cursor-pointer"
+              :style="{
+          left: timelineRange
+            ? dateToPercent(e.date, timelineRange.min, timelineRange.max) + '%'
+            : '50%'
+        }"
+              @click="selectEvent(e.id)"
+          >
             <div
-                v-for="e in eventsByTrack[t.id]"
-                :key="e.id"
-                class="absolute top-2 -translate-x-1/2 cursor-pointer"
-                :style="{
-    left: timelineRange
-      ? dateToPercent(e.date, timelineRange.min, timelineRange.max) + '%'
-      : '50%'
-  }"
-                @click="selectEvent(e.id)"
-            >
-              <!-- Punkt -->
-              <div
-                  class="h-3 w-3 rounded-full border relative"
-                  :class="e.id === selectedId ? 'border-black bg-black' : 'border-gray-400 bg-white'"
-              ></div>
-
-              <!-- Datum -->
-              <div class="text-xs text-gray-600 mt-2 whitespace-nowrap">
-                {{ e.date }}
-              </div>
-
-              <!-- Titel -->
-              <div class="text-xs text-center mt-1 max-w-[120px]">
-                {{ e.title }}
-              </div>
-              <!-- Löschen -->
-              <button
-                  class="mt-2 px-2 py-1 border rounded text-xs"
-                  @click.stop="deleteEvent(e.id)"
-              >
-                Löschen
-              </button>
+                class="h-3 w-3 rounded-full bg-white border-2"
+                :class="e.id === selectedId ? 'border-white' : 'border-neutral-400'"
+            ></div>
+            <div class="mt-2 text-xs text-center max-w-[120px] text-neutral-300">
+              {{ e.title }}
             </div>
-
-            <p
-                v-if="eventsByTrack[t.id].length === 0"
-                class="text-sm text-gray-500"
-            >
-              Noch keine Events.
-            </p>
           </div>
         </div>
+
+        <div class="flex justify-between text-xs text-neutral-500 mt-1 px-4">
+          <span>{{ timelineRange?.min }}</span>
+          <span>{{ timelineRange?.max }}</span>
+        </div>
       </div>
-
-
     </section>
+
 
     <!-- Formular -->
     <section class="border rounded p-3">
