@@ -201,7 +201,7 @@ function resetForm() {
 
 <template>
   <div class="p-4 max-w-3xl mx-auto">
-    <h1 class="text-2xl font-bold mb-4">LifePath (Step 1)</h1>
+    <h1 class="text-4xl font-bold mb-4">LifePath (Step 1)</h1>
 
     <!-- Liste -->
     <section class="border rounded p-3 mb-4">
@@ -215,8 +215,9 @@ function resetForm() {
             Debug: {{ eventsByTrack[t.id].length }} events in {{ t.id }}
           </div>
           <!-- Horizontale Timeline -->
-          <div class="relative h-24 bg-gray-50 rounded border">
-            <div class="absolute left-2 right-2 top-6 h-1 bg-gray-300 rounded"></div>
+          <div class="relative h-24 bg-white rounded border border-red-500">
+            <div class="absolute left-2 right-2 top-6 h-2 bg-red-500 rounded"></div>
+
             <div
                 v-for="e in eventsByTrack[t.id]"
                 :key="e.id"
