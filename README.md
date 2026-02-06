@@ -9,7 +9,7 @@ Eine visuelle App zur Dokumentation des eigenen Lebens über mehrere parallele Z
 
 Tech Stack:
 
-- Frontend: Vue 3 + Vite + TypeScript
+- Frontend: Vue 3 + Vite + JavaScript
 - Visualisierung: WebGL mit three.js
 - State: Pinia
 - Backend: API + Medien-Storage (Datenbank?)
